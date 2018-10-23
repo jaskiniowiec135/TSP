@@ -1,0 +1,7 @@
+C:\Users\Jaskiniowiec\source\repos\TSP\TSP\obj\Debug\TSP.csprojAssemblyReference.cache
+C:\Users\Jaskiniowiec\source\repos\TSP\TSP\obj\Debug\TSP.csproj.CoreCompileInputs.cache
+C:\Users\Jaskiniowiec\source\repos\TSP\TSP\bin\Debug\TSP.exe.config
+C:\Users\Jaskiniowiec\source\repos\TSP\TSP\bin\Debug\TSP.exe
+C:\Users\Jaskiniowiec\source\repos\TSP\TSP\bin\Debug\TSP.pdb
+C:\Users\Jaskiniowiec\source\repos\TSP\TSP\obj\Debug\TSP.exe
+C:\Users\Jaskiniowiec\source\repos\TSP\TSP\obj\Debug\TSP.pdb
