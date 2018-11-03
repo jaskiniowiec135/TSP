@@ -9,8 +9,9 @@ namespace TSP
     class Osobnik
     {
         public int ocena;
-        public int[] trasa;
         public static int suma;
+        public static int liczbaMiast;
+        public int[] trasa = new int[liczbaMiast];
         public int id;
         static Random r = new Random();
 
@@ -59,28 +60,30 @@ namespace TSP
 
     class Program
     {
-        static readonly int liczbaOsobników = 100;
-        static readonly int DocelowaLiczbaIteracji = 100000;
-        static int licznikGłówny = 0;
-        static int liczbaMiast = 0;
-        static readonly int parametrMutacji = 90;
-        static int parametrKrzyżowania = 0;
-        static readonly int uczestnicyTurnieju = 5;
 
         static void Main(string[] args)
         {
             string[] lines = System.IO.File.ReadAllLines("Berlin.txt");
-            liczbaMiast = Convert.ToInt32(lines[0]);
-            parametrKrzyżowania = liczbaMiast / 2;
+            Osobnik.liczbaMiast = Convert.ToInt32(lines[0]);
+
+            int liczbaOsobników = 100;
+            //int parametrKrzyżowania = liczbaMiast / 2;
+            int parametrMutacji = 90;
+            int uczestnicyTurnieju = 5;
+
+            int licznikGłówny = 0;
+            int DocelowaLiczbaIteracji = 100000;
+
+
             List<Osobnik> osobnicy = new List<Osobnik>();
             Osobnik najlepszy = new Osobnik();
 
-            int[,] distances = UstawOdległości(lines, liczbaMiast);
+            int[,] distances = UstawOdległości(lines, Osobnik.liczbaMiast);
 
             for (int i = 0; i < liczbaOsobników; i++)
             {
                 osobnicy.Add(new Osobnik());
-                osobnicy[i].WypełnijOsobnika(liczbaMiast);
+                osobnicy[i].WypełnijOsobnika(Osobnik.liczbaMiast);
                 osobnicy[i].OceńOsobnika(distances);
             }
 
@@ -99,9 +102,11 @@ namespace TSP
 
                 rodzice = WybierzRuletka(osobnicy);
 
-                rodzice = Krzyżuj(rodzice);
+                //rodzice = WybierzTurniej(osobnicy,uczestnicyTurnieju);
 
-                rodzice = Mutuj(rodzice);
+                rodzice = KrzyżujPMX(rodzice);
+
+                rodzice = Mutuj(rodzice, Osobnik.liczbaMiast, parametrMutacji);
                 
                 foreach(Osobnik o in rodzice)
                 {
@@ -126,6 +131,10 @@ namespace TSP
                 Console.WriteLine("Najlepsza znaleziona poprawna trasa: ");
                 WyświetlNajlepszego(najlepszy);
             }
+            else
+            {
+                Console.WriteLine("Znaleziona trasa nie jest poprawna.");
+            }
             Console.ReadKey();
         }
 
@@ -138,12 +147,12 @@ namespace TSP
             {
                 sumaOcen += o.ocena;
             }
-            for (int i = 0; i < liczbaOsobników; i++)
+            for (int i = 0; i < osobnicy.Count; i++)
             {
                 int licznik = r.Next(100);
                 int ocena = 0;
                 int j = -1;
-                while (licznik >= (ocena * 100) / sumaOcen && j < liczbaOsobników - 1)
+                while (licznik >= (ocena * 100) / sumaOcen && j < osobnicy.Count - 1)
                 {
                     j++;
                     ocena += osobnicy[j].ocena;
@@ -154,44 +163,96 @@ namespace TSP
             return rodzice;
         }
 
-        static List<Osobnik> WybierzTurniej(List<Osobnik> osobnicy)
+        static List<Osobnik> WybierzTurniej(List<Osobnik> osobnicy, int uczestnicyTurnieju)
         {
             List<Osobnik> rodzice = new List<Osobnik>();
             Random r = new Random();
-            for (int i = 0; i < liczbaOsobników; i++)
+            for (int i = 0; i < osobnicy.Count; i++)
             {
                 List<Osobnik> turniej = new List<Osobnik>();
                 for (int j = 0; j < uczestnicyTurnieju; j++)
                 {
-                    turniej.Add(osobnicy[r.Next(liczbaOsobników - 1)]);
+                    turniej.Add(osobnicy[r.Next(osobnicy.Count - 1)]);
                 }
             }
 
             return rodzice;
         }
 
-        static List<Osobnik> Krzyżuj(List<Osobnik> rodzice)
-        {
-            for (int i = 0; i < liczbaOsobników;)
-            {
-                int tmp = 0;
-
-                for (int j = 0; j < parametrKrzyżowania; j++)
-                {
-                    tmp = rodzice[i].trasa[j];
-                    rodzice[i].trasa[j] = rodzice[i + 1].trasa[j];
-                    rodzice[i + 1].trasa[j] = tmp;
-                }
-                i += 2;
-            }
-
-            return rodzice;
-        }
-
-        static List<Osobnik> Mutuj(List<Osobnik> rodzice)
+        static List<Osobnik> KrzyżujPMX(List<Osobnik> rodzice)
         {
             Random r = new Random();
-            for (int i = 0; i < liczbaOsobników; i++)
+            for(int i = 0; i < rodzice.Count;i++)
+            {
+                Osobnik o1 = new Osobnik();
+                Osobnik o2 = new Osobnik();
+                int n1;
+
+                if(i%2==0)
+                {
+                    n1 = r.Next(Osobnik.liczbaMiast / 2);
+                    for (int j = n1; j < n1 + Osobnik.liczbaMiast / 2; j++)
+                    {
+                        o1.trasa[j] = rodzice[i].trasa[j];
+                    }
+                    for (int j = n1; j < n1 + Osobnik.liczbaMiast / 2; j++)
+                    {
+                        if (Array.IndexOf(o1.trasa,rodzice[i+1].trasa[j])== -1)
+                        {
+                            int indeksPrzepisanejWartości = Array.IndexOf(rodzice[i + 1].trasa, o1.trasa[j]);
+                            while (o1.trasa[indeksPrzepisanejWartości] != 0)
+                            {
+                                indeksPrzepisanejWartości = Array.IndexOf(rodzice[i + 1].trasa, o1.trasa[indeksPrzepisanejWartości]);
+                            }
+                            o1.trasa[indeksPrzepisanejWartości] = rodzice[i + 1].trasa[j];
+                        }
+                    }
+                    for (int j = 0; j < Osobnik.liczbaMiast; j++)
+                    {
+                        if(Array.IndexOf(o1.trasa,rodzice[i+1].trasa[j])==-1)
+                        {
+                            o1.trasa[Array.IndexOf(o1.trasa,0)] = rodzice[i+1].trasa[j];
+                        }
+                    }
+                    rodzice[i] = o1;
+                }
+                else
+                {
+                    n1 = r.Next(Osobnik.liczbaMiast / 2);
+                    for (int j = n1; j < n1 + Osobnik.liczbaMiast / 2; j++)
+                    {
+                        o2.trasa[j] = rodzice[i-1].trasa[j];
+                    }
+                    for (int j = n1; j < n1 + Osobnik.liczbaMiast / 2; j++)
+                    {
+                        if (Array.IndexOf(o2.trasa, rodzice[i].trasa[j]) == -1)
+                        {
+                            int indeksPrzepisanejWartości = Array.IndexOf(rodzice[i].trasa, o2.trasa[j]);
+                            while (o2.trasa[indeksPrzepisanejWartości] != 0)
+                            {
+                                indeksPrzepisanejWartości = Array.IndexOf(rodzice[i].trasa, o2.trasa[indeksPrzepisanejWartości]);
+                            }
+                            o2.trasa[indeksPrzepisanejWartości] = rodzice[i].trasa[j];
+                        }
+                    }
+                    for (int j = 0; j < Osobnik.liczbaMiast; j++)
+                    {
+                        if (Array.IndexOf(o2.trasa, rodzice[i].trasa[j]) == -1)
+                        {
+                            o2.trasa[Array.IndexOf(o2.trasa, 0)] = rodzice[i].trasa[j];
+                        }
+                    }
+                    rodzice[i] = o2;
+                }
+            }
+
+            return rodzice;
+        }
+
+        static List<Osobnik> Mutuj(List<Osobnik> rodzice, int liczbaMiast, int parametrMutacji)
+        {
+            Random r = new Random();
+            for (int i = 0; i < rodzice.Count; i++)
             {
                 foreach (int j in rodzice[i].trasa)
                 {
