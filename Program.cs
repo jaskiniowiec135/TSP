@@ -67,7 +67,6 @@ namespace TSP
             Osobnik.liczbaMiast = Convert.ToInt32(lines[0]);
 
             int liczbaOsobników = 100;
-            //int parametrKrzyżowania = liczbaMiast / 2;
             int parametrMutacji = 90;
             int uczestnicyTurnieju = 5;
 
