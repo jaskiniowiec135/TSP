@@ -5,3 +5,9 @@ C:\Users\Jaskiniowiec\source\repos\TSP\TSP\bin\Debug\TSP.exe
 C:\Users\Jaskiniowiec\source\repos\TSP\TSP\bin\Debug\TSP.pdb
 C:\Users\Jaskiniowiec\source\repos\TSP\TSP\obj\Debug\TSP.exe
 C:\Users\Jaskiniowiec\source\repos\TSP\TSP\obj\Debug\TSP.pdb
+C:\Users\Student12\Desktop\TSP\TSP\bin\Debug\TSP.exe.config
+C:\Users\Student12\Desktop\TSP\TSP\obj\Debug\TSP.exe
+C:\Users\Student12\Desktop\TSP\TSP\obj\Debug\TSP.pdb
+C:\Users\Student12\Desktop\TSP\TSP\bin\Debug\TSP.exe
+C:\Users\Student12\Desktop\TSP\TSP\bin\Debug\TSP.pdb
+C:\Users\Student12\Desktop\TSP\TSP\obj\Debug\TSP.csprojResolveAssemblyReference.cache

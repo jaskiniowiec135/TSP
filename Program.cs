@@ -60,18 +60,18 @@ namespace TSP
 
     class Program
     {
-
+        static Random r = new Random();
         static void Main(string[] args)
         {
             string[] lines = System.IO.File.ReadAllLines("Berlin.txt");
             Osobnik.liczbaMiast = Convert.ToInt32(lines[0]);
 
-            int liczbaOsobników = 100;
-            int parametrMutacji = 90;
+            int liczbaOsobników = 40;
+            int parametrMutacji = 995;
             int uczestnicyTurnieju = 5;
 
             int licznikGłówny = 0;
-            int DocelowaLiczbaIteracji = 100000;
+            int DocelowaLiczbaIteracji = 200000;
 
 
             List<Osobnik> osobnicy = new List<Osobnik>();
@@ -93,28 +93,26 @@ namespace TSP
 
             long t1 = DateTime.Now.Ticks;
 
-            while(DocelowaLiczbaIteracji > licznikGłówny)
+            while (DocelowaLiczbaIteracji > licznikGłówny)
             {
-                licznikGłówny++;
-                Random r = new Random();
                 List<Osobnik> rodzice = new List<Osobnik>();
 
-                rodzice = WybierzRuletka(osobnicy);
+                //rodzice = WybierzRuletka(osobnicy);
 
-                //rodzice = WybierzTurniej(osobnicy,uczestnicyTurnieju);
+                rodzice = WybierzTurniej(osobnicy, distances, uczestnicyTurnieju);
 
-                rodzice = KrzyżujPMX(rodzice);
+                rodzice = KrzyżujOX(rodzice);
 
                 rodzice = Mutuj(rodzice, Osobnik.liczbaMiast, parametrMutacji);
-                
-                foreach(Osobnik o in rodzice)
+
+                foreach (Osobnik o in rodzice)
                 {
                     o.OceńOsobnika(distances);
                 }
 
                 najlepszy = new Osobnik(ZnajdźMinimum(osobnicy, najlepszy, licznikGłówny));
-
                 osobnicy = rodzice;
+                licznikGłówny++;
             }
 
             TimeSpan tz = new TimeSpan(DateTime.Now.Ticks - t1);
@@ -140,7 +138,6 @@ namespace TSP
         static List<Osobnik> WybierzRuletka(List<Osobnik> osobnicy)
         {
             List<Osobnik> rodzice = new List<Osobnik>();
-            Random r = new Random();
             int sumaOcen = 0;
             foreach (Osobnik o in osobnicy)
             {
@@ -162,10 +159,9 @@ namespace TSP
             return rodzice;
         }
 
-        static List<Osobnik> WybierzTurniej(List<Osobnik> osobnicy, int uczestnicyTurnieju)
+        static List<Osobnik> WybierzTurniej(List<Osobnik> osobnicy,int[,] distances, int uczestnicyTurnieju)
         {
             List<Osobnik> rodzice = new List<Osobnik>();
-            Random r = new Random();
             for (int i = 0; i < osobnicy.Count; i++)
             {
                 List<Osobnik> turniej = new List<Osobnik>();
@@ -173,76 +169,65 @@ namespace TSP
                 {
                     turniej.Add(osobnicy[r.Next(osobnicy.Count - 1)]);
                 }
+                
+                foreach(Osobnik o in turniej)
+                {
+                    o.OceńOsobnika(distances);
+                }
+
+                rodzice.Add(ZnajdźMinimum(turniej, osobnicy[i]));
             }
 
             return rodzice;
         }
 
-        static List<Osobnik> KrzyżujPMX(List<Osobnik> rodzice)
+        static List<Osobnik> KrzyżujOX(List<Osobnik> rodzice)
         {
-            Random r = new Random();
-            for(int i = 0; i < rodzice.Count;i++)
-            {
-                Osobnik o1 = new Osobnik();
-                Osobnik o2 = new Osobnik();
-                int n1;
+            Osobnik o1 = new Osobnik();
+            Osobnik o2 = new Osobnik();
 
-                if(i%2==0)
+            for (int i = 0; i < rodzice.Count - 1;i++)
+            {
+                Osobnik o = new Osobnik();
+                int n1;
+                n1 = r.Next(Osobnik.liczbaMiast / 2);
+                for (int j = n1; j < n1 + Osobnik.liczbaMiast / 2; j++)
                 {
-                    n1 = r.Next(Osobnik.liczbaMiast / 2);
-                    for (int j = n1; j < n1 + Osobnik.liczbaMiast / 2; j++)
+                    o.trasa[j] = rodzice[i].trasa[j];
+                }
+                for (int j = n1; j < n1 + Osobnik.liczbaMiast / 2; j++)
+                {
+                    if (Array.IndexOf(o.trasa, rodzice[i + 1].trasa[j]) == -1)
                     {
-                        o1.trasa[j] = rodzice[i].trasa[j];
-                    }
-                    for (int j = n1; j < n1 + Osobnik.liczbaMiast / 2; j++)
-                    {
-                        if (Array.IndexOf(o1.trasa,rodzice[i+1].trasa[j])== -1)
+                        int indeksPrzepisanejWartości = Array.IndexOf(rodzice[i + 1].trasa, o.trasa[j]);
+                        while (o.trasa[indeksPrzepisanejWartości] != 0)
                         {
-                            int indeksPrzepisanejWartości = Array.IndexOf(rodzice[i + 1].trasa, o1.trasa[j]);
-                            while (o1.trasa[indeksPrzepisanejWartości] != 0)
-                            {
-                                indeksPrzepisanejWartości = Array.IndexOf(rodzice[i + 1].trasa, o1.trasa[indeksPrzepisanejWartości]);
-                            }
-                            o1.trasa[indeksPrzepisanejWartości] = rodzice[i + 1].trasa[j];
+                            indeksPrzepisanejWartości = Array.IndexOf(rodzice[i + 1].trasa, o.trasa[indeksPrzepisanejWartości]);
                         }
+                        o.trasa[indeksPrzepisanejWartości] = rodzice[i + 1].trasa[j];
                     }
-                    for (int j = 0; j < Osobnik.liczbaMiast; j++)
+                }
+                for (int j = 0; j < Osobnik.liczbaMiast; j++)
+                {
+                    if (Array.IndexOf(o.trasa, rodzice[i + 1].trasa[j]) == -1)
                     {
-                        if(Array.IndexOf(o1.trasa,rodzice[i+1].trasa[j])==-1)
-                        {
-                            o1.trasa[Array.IndexOf(o1.trasa,0)] = rodzice[i+1].trasa[j];
-                        }
+                        o.trasa[Array.IndexOf(o.trasa, 0)] = rodzice[i + 1].trasa[j];
                     }
-                    rodzice[i] = o1;
+                }
+
+                if (i % 2 == 0)
+                    {
+                    o1 = o;
                 }
                 else
                 {
-                    n1 = r.Next(Osobnik.liczbaMiast / 2);
-                    for (int j = n1; j < n1 + Osobnik.liczbaMiast / 2; j++)
-                    {
-                        o2.trasa[j] = rodzice[i-1].trasa[j];
-                    }
-                    for (int j = n1; j < n1 + Osobnik.liczbaMiast / 2; j++)
-                    {
-                        if (Array.IndexOf(o2.trasa, rodzice[i].trasa[j]) == -1)
-                        {
-                            int indeksPrzepisanejWartości = Array.IndexOf(rodzice[i].trasa, o2.trasa[j]);
-                            while (o2.trasa[indeksPrzepisanejWartości] != 0)
-                            {
-                                indeksPrzepisanejWartości = Array.IndexOf(rodzice[i].trasa, o2.trasa[indeksPrzepisanejWartości]);
-                            }
-                            o2.trasa[indeksPrzepisanejWartości] = rodzice[i].trasa[j];
-                        }
-                    }
-                    for (int j = 0; j < Osobnik.liczbaMiast; j++)
-                    {
-                        if (Array.IndexOf(o2.trasa, rodzice[i].trasa[j]) == -1)
-                        {
-                            o2.trasa[Array.IndexOf(o2.trasa, 0)] = rodzice[i].trasa[j];
-                        }
-                    }
+                    o2 = o;
+                    rodzice[i - 1] = o1;
                     rodzice[i] = o2;
+                    o1 = new Osobnik();
+                    o2 = new Osobnik();
                 }
+                
             }
 
             return rodzice;
@@ -250,12 +235,11 @@ namespace TSP
 
         static List<Osobnik> Mutuj(List<Osobnik> rodzice, int liczbaMiast, int parametrMutacji)
         {
-            Random r = new Random();
             for (int i = 0; i < rodzice.Count; i++)
             {
                 foreach (int j in rodzice[i].trasa)
                 {
-                    if (r.Next(100) > parametrMutacji)
+                    if (r.Next(1000) > parametrMutacji)
                     {
                         int m = r.Next(liczbaMiast - 1);
                         if(m == j)
