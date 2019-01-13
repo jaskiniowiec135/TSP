@@ -3,16 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.IO;
 
 namespace TSP
 {
     public class Osobnik
     {
         public int ocena;
-        public static int suma;
         public static int liczbaMiast;
         public int[] trasa = new int[liczbaMiast];
-        public int id;
         static Random r = new Random();
 
         public Osobnik()
@@ -22,23 +21,20 @@ namespace TSP
 
         public Osobnik(Osobnik o)
         {
-            this.id = o.id;
             this.ocena = o.ocena;
             this.trasa = o.trasa;
         }
 
-        public void WypełnijOsobnika(int l)
+        public void WypełnijOsobnika()
         {
-            id = suma;
-            suma++;
             List<int> indeksy = new List<int>();
-            int[] tab = new int[l];
-            for (int k = 0; k < l; k++)
+            int[] tab = new int[liczbaMiast];
+            for (int k = 0; k < liczbaMiast; k++)
             {
                 indeksy.Add(k);
             }
 
-            for (int j = 0; j < l; j++)
+            for (int j = 0; j < liczbaMiast; j++)
             {
                 tab[j] = indeksy[r.Next(indeksy.Count)];
                 indeksy.Remove(tab[j]);
@@ -49,7 +45,6 @@ namespace TSP
         public void OceńOsobnika(int[,] distances)
         {
             ocena = 0;
-
             for (int i = 0; i < trasa.Length - 1; i++)
             {
                 ocena += distances[trasa[i], trasa[i + 1]];
@@ -63,7 +58,8 @@ namespace TSP
         #region Deklaracja singletona
 
         private static TSP instancja = new TSP();
-
+        
+        
         static TSP()
         {
 
@@ -79,11 +75,13 @@ namespace TSP
 
         private TSP()
         {
+
         }
 
         #endregion
 
         #region Deklaracja zmiennych 
+
         static Random RNG;
         string[] lines;
         public int[,] distances;
@@ -91,38 +89,40 @@ namespace TSP
         public void PrepareVariables()
         {
             RNG = new Random();
-            lines = System.IO.File.ReadAllLines("Berlin.txt");
+            lines = File.ReadAllLines("Berlin.txt");
             Osobnik.liczbaMiast = Convert.ToInt32(TSP.Instancja.lines[0]);
-            distances = TSP.UstawOdległości(TSP.Instancja.lines, Osobnik.liczbaMiast);
+            distances = TSP.UstawOdległości();
         }
 
         public int liczbaOsobników = 40;
-        int uczestnicyTurnieju = 3;
-        int parametrMutacji = 995;
+        public int uczestnicyTurnieju = 3;
+        public int parametrKrzyżowania = 15;
+        public int parametrMutacji = 985;
         public int licznikGłówny = 0;
-        public int DocelowaLiczbaIteracji = 200000;
+        public int DocelowaLiczbaIteracji = 10000;
 
         #endregion
 
-        private static int[,] UstawOdległości(string[] lines, int l)
+        private static int[,] UstawOdległości()
         {
-            int[,] distances = new int[l, l];
-            for (int i = 1; i < l + 1; i++)
+            int[,] distances = new int[Osobnik.liczbaMiast, Osobnik.liczbaMiast];
+            for (int i = 1; i < Osobnik.liczbaMiast + 1; i++)
             {
-                int[] line = GetLine(lines[i]);
+                int[] line = GetLine(TSP.Instancja.lines[i]);
                 for (int j = 0; j < line.Length - 1; j++)
                 {
                     distances[i - 1, j] = line[j];
                 }
             }
 
-            for (int i = 0; i < l - 1; i++)
+            for (int i = 0; i < Osobnik.liczbaMiast + 1; i++)
             {
-                for (int j = i + 1; j < l - 1; j++)
+                for (int j = i + 1; j < Osobnik.liczbaMiast; j++)
                 {
                     distances[i, j] = distances[j, i];
                 }
             }
+
             return distances;
         }
 
@@ -143,76 +143,106 @@ namespace TSP
         {
             List<Osobnik> rodzice = new List<Osobnik>();
 
-            rodzice = TSP.WybierzTurniej(osobnicy, TSP.Instancja.distances, TSP.Instancja.uczestnicyTurnieju);
+            rodzice = TSP.Wybierz(osobnicy, najlepszy);
 
-            rodzice = TSP.KrzyżujOX(rodzice);
+            rodzice = TSP.Krzyżuj(rodzice, parametrKrzyżowania);
 
-            rodzice = TSP.Mutuj(rodzice, Osobnik.liczbaMiast, TSP.Instancja.parametrMutacji);
+            rodzice = TSP.Mutuj(rodzice, parametrMutacji);
 
-            foreach (Osobnik o in rodzice)
-            {
-                o.OceńOsobnika(TSP.Instancja.distances);
-            }
-
-            najlepszy = new Osobnik(TSP.Instancja.ZnajdźMinimumWPętli(osobnicy, najlepszy, TSP.Instancja.licznikGłówny));
+            najlepszy = new Osobnik(ZnajdźMinimumWPętli(rodzice, najlepszy, licznikGłówny));
             osobnicy = rodzice;
-            TSP.Instancja.licznikGłówny++;
+            licznikGłówny++;
         }
 
-        private static List<Osobnik> WybierzRuletka(List<Osobnik> osobnicy)
+        #region Selekcja
+
+        private static List<Osobnik> Wybierz(List<Osobnik> osobnicy, Osobnik najlepszy)
         {
             List<Osobnik> rodzice = new List<Osobnik>();
-            int sumaOcen = 0;
-            foreach (Osobnik o in osobnicy)
+
+            if(TSP.Instancja.licznikGłówny % 500 == 0)
             {
-                sumaOcen += o.ocena;
+                rodzice = TSP.WybierzRuletka(osobnicy, najlepszy);
             }
-            for (int i = 0; i < osobnicy.Count; i++)
+            else
             {
-                int licznik = RNG.Next(100);
-                int ocena = 0;
-                int j = -1;
-                while (licznik >= (ocena * 100) / sumaOcen && j < osobnicy.Count - 1)
-                {
-                    j++;
-                    ocena += osobnicy[j].ocena;
-                }
-                rodzice.Add(osobnicy[j]);
+                rodzice = TSP.WybierzTurniej(osobnicy);
             }
 
             return rodzice;
         }
 
-        private static List<Osobnik> WybierzTurniej(List<Osobnik> osobnicy, int[,] distances, int uczestnicyTurnieju)
+        private static List<Osobnik> WybierzRuletka(List<Osobnik> osobnicy, Osobnik najlepszy)
+        {
+            List<Osobnik> rodzice = new List<Osobnik>();
+            double sumaOcen = 0;
+            foreach(Osobnik o in osobnicy)
+            {
+                sumaOcen += o.ocena;
+            }
+            
+            for (int i = 0; i < osobnicy.Count; i++)
+            {
+                double licznik = RNG.Next(99);
+                double ocena = 0;
+                int j = -1;
+                double tmp = -1;
+                while (licznik >= tmp)
+                {
+                    j++;
+                    ocena += osobnicy[j].ocena;
+                    tmp = ((ocena / sumaOcen)*100) + 1;
+                    //tmp = Math.Round(100 - (((sumaOcen - ocena + 1) / sumaOcen) * 100));
+                    // TODO
+                }
+                rodzice.Add(osobnicy[j]);
+            }
+            return rodzice;
+        }
+
+        private static List<Osobnik> WybierzTurniej(List<Osobnik> osobnicy)
         {
             List<Osobnik> rodzice = new List<Osobnik>();
             for (int i = 0; i < osobnicy.Count; i++)
             {
                 List<Osobnik> turniej = new List<Osobnik>();
-                for (int j = 0; j < uczestnicyTurnieju; j++)
+                for (int j = 0; j < TSP.Instancja.uczestnicyTurnieju; j++)
                 {
                     turniej.Add(osobnicy[RNG.Next(osobnicy.Count - 1)]);
                 }
-
-                foreach (Osobnik o in turniej)
-                {
-                    o.OceńOsobnika(distances);
-                }
-
                 rodzice.Add(new Osobnik(Instancja.ZnajdźMinimum(turniej, osobnicy[i])));
             }
-
             return rodzice;
         }
 
-        private static List<Osobnik> KrzyżujOX(List<Osobnik> rodzice)
+        #endregion
+
+        #region Krzyżowanie
+
+        private static List<Osobnik> Krzyżuj(List<Osobnik> rodzice, int parametrKrzyżowania)
         {
             Osobnik o1 = new Osobnik();
             Osobnik o2 = new Osobnik();
 
-            for (int i = 0; i < rodzice.Count - 1; i++)
+            for (int i = 0; i < rodzice.Count; i++)
             {
-                Osobnik o = KrzyżujParęOX(i, rodzice);
+                Osobnik o = new Osobnik();
+
+                if (RNG.Next(100) > parametrKrzyżowania)
+                {
+                    if (TSP.Instancja.licznikGłówny % 500 == 0)
+                    {
+                        o = KrzyżujParęPMX(i, rodzice);
+                    }
+                    else
+                    {
+                        o = KrzyżujParęOX(i, rodzice);
+                    }
+                }
+                else
+                {
+                    o = rodzice[i];
+                }
 
                 if (i % 2 == 0)
                 {
@@ -223,67 +253,148 @@ namespace TSP
                     o2 = o;
                     rodzice[i - 1] = o1;
                     rodzice[i] = o2;
-                    o1 = new Osobnik();
-                    o2 = new Osobnik();
                 }
             }
 
             return rodzice;
         }
 
-        private static Osobnik KrzyżujParęOX(int indeksRodziców, List<Osobnik> rodzice)
+        private static Osobnik KrzyżujParęPMX(int indeksRodziców, List<Osobnik> rodzice)
         {
             Osobnik o = new Osobnik();
-            int indeksKrzyżowania = 0;
-            indeksKrzyżowania = RNG.Next(Osobnik.liczbaMiast / 2);
-            for (int j = indeksKrzyżowania; j < indeksKrzyżowania + Osobnik.liczbaMiast / 2; j++)
+            for (int i = 0; i < Osobnik.liczbaMiast; i++)
             {
-                o.trasa[j] = rodzice[indeksRodziców].trasa[j];
+                o.trasa[i] = -1;
             }
-            for (int j = indeksKrzyżowania; j < indeksKrzyżowania + Osobnik.liczbaMiast / 2; j++)
+            int któryRodzic = 0;
+            if (indeksRodziców % 2 == 0)
             {
-                if (Array.IndexOf(o.trasa, rodzice[indeksRodziców + 1].trasa[j]) == -1)
+                któryRodzic = 1;
+            }
+            else
+            {
+                któryRodzic = -1;
+            }
+
+            int początekKrzyżowania = 0, koniecKrzyżowania = 0;
+            początekKrzyżowania = RNG.Next(Osobnik.liczbaMiast - 1);
+            koniecKrzyżowania = RNG.Next(Osobnik.liczbaMiast - 1);
+
+            if (początekKrzyżowania > koniecKrzyżowania)
+            {
+                int tmp = koniecKrzyżowania;
+                koniecKrzyżowania = początekKrzyżowania;
+                początekKrzyżowania = tmp;
+            }
+
+            for (int i = początekKrzyżowania; i <= koniecKrzyżowania; i++)
+            {
+                o.trasa[i] = rodzice[indeksRodziców].trasa[i];
+            }
+            
+
+            for(int i = początekKrzyżowania; i <= koniecKrzyżowania; i++)
+            {
+                if(!o.trasa.Contains(rodzice[indeksRodziców + któryRodzic].trasa[i]))
                 {
-                    int indeksPrzepisanejWartości = Array.IndexOf(rodzice[indeksRodziców + 1].trasa, o.trasa[j]);
-                    while (o.trasa[indeksPrzepisanejWartości] != 0)
+                    int indeksPrzypisanejWartości = Array.IndexOf(rodzice[indeksRodziców + któryRodzic].trasa, o.trasa[i]);
+                    
+                    while (o.trasa[indeksPrzypisanejWartości] != -1)
                     {
-                        indeksPrzepisanejWartości = Array.IndexOf(rodzice[indeksRodziców + 1].trasa, o.trasa[indeksPrzepisanejWartości]);
+                        indeksPrzypisanejWartości = Array.IndexOf(rodzice[indeksRodziców + któryRodzic].trasa, o.trasa[indeksPrzypisanejWartości]);
+                        //int tmp = Array.IndexOf(rodzice[indeksRodziców + któryRodzic].trasa, o.trasa[indeksPrzypisanejWartości]);
+                        //indeksPrzypisanejWartości = Array.IndexOf(rodzice[indeksRodziców + któryRodzic].trasa, tmp);
+                        // TODO do poprawy generacja populacji bazowej
                     }
-                    o.trasa[indeksPrzepisanejWartości] = rodzice[indeksRodziców + 1].trasa[j];
-                }
+                    o.trasa[indeksPrzypisanejWartości] = rodzice[indeksRodziców + któryRodzic].trasa[i];
+                }                
             }
-            for (int j = 0; j < Osobnik.liczbaMiast; j++)
+
+            for (int i = 0; i < Osobnik.liczbaMiast; i++)
             {
-                if (Array.IndexOf(o.trasa, rodzice[indeksRodziców + 1].trasa[j]) == -1)
+                int n = rodzice[indeksRodziców + któryRodzic].trasa[i];
+                if(!o.trasa.Contains(n))
                 {
-                    o.trasa[Array.IndexOf(o.trasa, 0)] = rodzice[indeksRodziców + 1].trasa[j];
+                    o.trasa[Array.IndexOf(o.trasa, -1)] = n;
                 }
             }
 
             return o;
         }
 
-        private static List<Osobnik> Mutuj(List<Osobnik> rodzice, int liczbaMiast, int parametrMutacji)
+        private static Osobnik KrzyżujParęOX(int indeksRodziców, List<Osobnik> rodzice)
         {
+            Osobnik o = new Osobnik();
+            int któryRodzic = 0;
+            if(indeksRodziców%2==0)
+            {
+                któryRodzic = 1;
+            }
+            else
+            {
+                któryRodzic = -1;
+            }
+
+            int początekKrzyżowania = 0, koniecKrzyżowania = 0;
+            początekKrzyżowania = RNG.Next(Osobnik.liczbaMiast - 1);
+            koniecKrzyżowania = RNG.Next(Osobnik.liczbaMiast - 1);
+
+            if(początekKrzyżowania > koniecKrzyżowania)
+            {
+                int tmp = koniecKrzyżowania;
+                koniecKrzyżowania = początekKrzyżowania;
+                początekKrzyżowania = tmp;
+            }
+
+            for (int j = początekKrzyżowania; j <= koniecKrzyżowania; j++)
+            {
+                o.trasa[j] = rodzice[indeksRodziców].trasa[j];
+            }
+
+            int licznikRodzica = koniecKrzyżowania + 1, licznikOsobnika = koniecKrzyżowania + 1;
+
+            while(Array.IndexOf(o.trasa,0) != Array.LastIndexOf(o.trasa,0))
+            {
+                if (!o.trasa.Contains(rodzice[indeksRodziców + któryRodzic].trasa[licznikRodzica]))
+                {
+                    o.trasa[licznikOsobnika] = rodzice[indeksRodziców + któryRodzic].trasa[licznikRodzica];
+                    licznikOsobnika++;
+                }
+
+                licznikRodzica++;
+                if(licznikRodzica > Osobnik.liczbaMiast - 1)
+                {
+                    licznikRodzica = 0;
+                }
+                if(licznikOsobnika > Osobnik.liczbaMiast - 1)
+                {
+                    licznikOsobnika = 0;
+                }
+            }
+
+            return o;
+        }
+
+        #endregion
+
+        #region Mutacja
+
+        private static List<Osobnik> Mutuj(List<Osobnik> rodzice, int parametrMutacji)
+        {
+            if(TSP.Instancja.licznikGłówny % 1000 == 0)
+            {
+                TSP.Instancja.parametrMutacji += 1;
+            }
             for (int i = 0; i < rodzice.Count; i++)
             {
                 foreach (int j in rodzice[i].trasa)
                 {
                     if (RNG.Next(1000) > parametrMutacji)
                     {
-                        int m = RNG.Next(liczbaMiast - 1);
-                        if (m == j)
-                        {
-                            int tmp = rodzice[i].trasa[j];
-                            rodzice[i].trasa[j] = rodzice[i].trasa[0];
-                            rodzice[i].trasa[0] = tmp;
-                        }
-                        else
-                        {
-                            int tmp = rodzice[i].trasa[j];
-                            rodzice[i].trasa[j] = rodzice[i].trasa[m];
-                            rodzice[i].trasa[m] = tmp;
-                        }
+                        int m = RNG.Next(0, Osobnik.liczbaMiast - 1);
+                        int tmp = rodzice[i].trasa[j];
+                        rodzice[i].trasa[j] = rodzice[i].trasa[m];
+                        rodzice[i].trasa[m] = tmp;
                     }
                 }
             }
@@ -292,16 +403,17 @@ namespace TSP
 
         #endregion
 
+        #endregion
+
         public Osobnik ZnajdźMinimum(List<Osobnik> osobnicy, Osobnik najlepszy)
         {
-            for (int i = 0; i < osobnicy.Count - 1; i++)
+            for (int i = 0; i < osobnicy.Count; i++)
             {
                 if (najlepszy.ocena > osobnicy[i].ocena)
                 {
                     najlepszy = osobnicy[i];
                 }
             }
-
             return najlepszy;
         }
 
@@ -309,6 +421,7 @@ namespace TSP
         {
             for (int i = 0; i < rodzice.Count; i++)
             {
+                rodzice[i].OceńOsobnika(distances);
                 if (najlepszy.ocena > rodzice[i].ocena)
                 {
                     najlepszy = rodzice[i];
@@ -317,7 +430,6 @@ namespace TSP
                     iteracja.Append(licznikGłówny.ToString());
                     iteracja.Append((licznikGłówny > 100000) ? "\t" : "\t\t");
                     Console.Write(iteracja);
-                    //Console.Write("Iteracja: " + licznikGłówny + "\t");
                     Console.Write("Minimum wynosi: " + najlepszy.ocena + "\t");
                     for (int j = 0; j < najlepszy.ocena / 1000; j++)
                     {
@@ -359,26 +471,24 @@ namespace TSP
         {
             bool result = true;
 
-            for (int i = 0; i < najlepszy.trasa.Length; i++)
+            for (int i = 0; i < Osobnik.liczbaMiast; i++)
             {
                 if (!najlepszy.trasa.Contains(i))
                 {
                     result = false;
                 }
             }
-
             return result;
         }
 
         private static void WyświetlNajlepszego(Osobnik najlepszy)
         {
-            foreach (int i in najlepszy.trasa)
+            foreach(int i in najlepszy.trasa)
             {
-                Console.Write(najlepszy.trasa[i] + " ");
+                Console.Write(i + " ");
             }
             Console.WriteLine();
-        }
-
+        }        
         #endregion
     }
 
@@ -390,13 +500,10 @@ namespace TSP
 
             List<Osobnik> osobnicy = new List<Osobnik>();
             Osobnik najlepszy = new Osobnik();
-
             WygenerujPopulacjęPoczątkową(ref osobnicy);
 
             najlepszy.ocena = int.MaxValue;
-            najlepszy =  TSP.Instancja.ZnajdźMinimum(osobnicy,najlepszy);
-
-            Console.WriteLine("Minimum w populacji początkowej wynosi: " + najlepszy.ocena);
+            najlepszy = TSP.Instancja.ZnajdźMinimum(osobnicy, najlepszy);
 
             long t1 = DateTime.Now.Ticks;
 
@@ -406,19 +513,39 @@ namespace TSP
             }
 
             TimeSpan tz = new TimeSpan(DateTime.Now.Ticks - t1);
-
             TSP.Instancja.Podsumuj(tz, najlepszy);
+            ZapiszDoPliku(najlepszy);
 
             Console.ReadKey();
         }
 
         static void WygenerujPopulacjęPoczątkową(ref List<Osobnik> osobnicy)
         {
+            osobnicy.Clear();
             for (int i = 0; i < TSP.Instancja.liczbaOsobników; i++)
             {
                 osobnicy.Add(new Osobnik());
-                osobnicy[i].WypełnijOsobnika(Osobnik.liczbaMiast);
+                osobnicy[i].WypełnijOsobnika();
                 osobnicy[i].OceńOsobnika(TSP.Instancja.distances);
+            }
+        }
+
+        static void ZapiszDoPliku(Osobnik najlepszy)
+        {
+            StringBuilder wynik = new StringBuilder();
+            foreach (int i in najlepszy.trasa)
+            {
+                wynik.Append(i + "-");
+            }
+            wynik.Remove(wynik.Length - 1, 1);
+            wynik.Append(" " + najlepszy.ocena);
+
+            string s = wynik.ToString();
+
+            string path = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            using (StreamWriter output = new StreamWriter(Path.Combine(path, "Wynik.txt")))
+            {
+                output.WriteLine(s);
             }
         }
     }
