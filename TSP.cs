@@ -51,10 +51,10 @@ namespace TSP
 
         public int numberOfPersons = 40;
         public int tournamentParticipants = 3;
-        public int crossingParameter = 5;
-        public int mutationParameter = 999995;
+        public int crossingParameter = 15;
+        public int mutationParameter = 99995;
         public int mainCounter = 0;
-        public int finalIterationNumber = 100000;
+        public int finalIterationNumber = 40000;
 
         #endregion
 
@@ -321,9 +321,9 @@ namespace TSP
             {
                 foreach (int j in parents[i].route)
                 {
-                    if (RNG.Next(1000000) > mutationParameter)
+                    if (RNG.Next(100000) > mutationParameter)
                     {
-                        int m = RNG.Next(0, Person.numberOfCities - 1);
+                        int m = RNG.Next(0, Person.numberOfCities);
                         int tmp = parents[i].route[j];
                         parents[i].route[j] = parents[i].route[m];
                         parents[i].route[m] = tmp;
